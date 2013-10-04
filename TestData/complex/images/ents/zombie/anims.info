@@ -1,0 +1,47 @@
+(anim) "zombie stand" :
+{
+	"frame count" : 1,
+	"frequency" : 1.0,
+	
+	"size" : { "width" : 4, "height" : 8 },
+	
+	"directional" : true,
+	
+	"frames" :
+	[
+		[ "zombie_stand_w" ],
+		[ "zombie_stand_n" ],
+		[ "zombie_stand_e" ],
+		[ "zombie_stand_s" ]
+	]
+},
+
+(anim) "zombie walk" :
+{
+	"frame count" : 4,
+	"frequency" : 0.5,
+	
+	"size" : { "width" : 4, "height" : 8 },
+	
+	"directional" : true,
+	
+	"frames" :
+	[
+		[ "zombie_walk_w0", "zombie_walk_w1", "zombie_walk_w2", "zombie_walk_w3" ],
+		[ "zombie_walk_n0", "zombie_walk_n1", "zombie_walk_n2", "zombie_walk_n3" ],
+		[ "zombie_walk_e0", "zombie_walk_e1", "zombie_walk_e2", "zombie_walk_e3" ],
+		[ "zombie_walk_s0", "zombie_walk_s1", "zombie_walk_s2", "zombie_walk_s3" ]
+	]
+},
+
+(anim) "zombie dead" :
+{
+	"frame count" : 1,
+	"frequency" : 1.0,
+	
+	"size" : { "width" : 8, "height" : 2 },
+	
+	"directional" : false,
+	
+	"frames" : [ "zombie_dead" ]
+}

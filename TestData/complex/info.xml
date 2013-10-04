@@ -1,0 +1,11 @@
+<archive>
+    <name>Zombles Art</name>
+    <author>
+        <name>Metapyziks</name>
+        <email>metapyziks@gmail.com</email>
+        <website>https://github.com/Metapyziks/Zombles</website>
+    </author>
+    <version>0.0.0.1</version>
+    <description>Core graphics for Zombles</description>
+    <destination>client</destination>
+</archive>
