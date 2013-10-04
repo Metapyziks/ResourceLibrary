@@ -33,6 +33,13 @@ namespace ResourceLibrary
             }
         }
 
+        internal override Archive GetInnerArchive(string name)
+        {
+            var path = Path.Combine(_directory, name);
+            if (!Directory.Exists(path)) return null;
+            return new LooseArchive(path, false);
+        }
+
         internal override IEnumerable<KeyValuePair<String, ResourceType>> GetResources()
         {
             foreach (var file in Directory.GetFiles(_directory)) {

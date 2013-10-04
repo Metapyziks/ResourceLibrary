@@ -120,26 +120,16 @@ namespace ResourceLibrary
             var name = locator.First();
 
             if (locator.Count() > 1) {
-                if (!_innerArchives.ContainsKey(name)) {
-                    throw new FileNotFoundException(name);
-                }
+                if (!_innerArchives.ContainsKey(name)) return null;
 
-                try {
-                    return _innerArchives[name].Get(resType, locator.Skip(1));
-                } catch (FileNotFoundException e) {
-                    throw new FileNotFoundException(String.Join("/", locator));
-                }
+                return _innerArchives[name].Get(resType, locator.Skip(1));
             }
 
-            if (!_resPositions.ContainsKey(resType)) {
-                throw new FileNotFoundException(name);
-            }
+            if (!_resPositions.ContainsKey(resType)) return null;
 
             var dict = _resPositions[resType];
 
-            if (!dict.ContainsKey(name)) {
-                throw new FileNotFoundException(name);
-            }
+            if (!dict.ContainsKey(name)) return null;
 
             lock (_stream) {
                 var position = dict[name];
@@ -152,6 +142,12 @@ namespace ResourceLibrary
                     return resType.Load(memStream);
                 }
             }
+        }
+
+        internal override Archive GetInnerArchive(string name)
+        {
+            if (!_innerArchives.ContainsKey(name)) return null;
+            return _innerArchives[name];
         }
 
         internal override IEnumerable<KeyValuePair<String, ResourceType>> GetResources()
@@ -167,6 +163,8 @@ namespace ResourceLibrary
 
         public override void Dispose()
         {
+            base.Dispose();
+
             _stream.Close();
             _stream.Dispose();
         }

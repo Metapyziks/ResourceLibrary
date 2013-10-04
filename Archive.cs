@@ -16,10 +16,12 @@ namespace ResourceLibrary
         internal static readonly String MagicWord = "RSAR";
 
         private static Dictionary<Type, ResourceType> _resTypes;
+        private static List<Archive> _mounted;
 
         static Archive()
         {
             _resTypes = new Dictionary<Type, ResourceType>();
+            _mounted = new List<Archive>();
 
             RegisterAll(Assembly.GetExecutingAssembly());
         }
@@ -78,21 +80,11 @@ namespace ResourceLibrary
             return _resTypes.Values.FirstOrDefault(x => x.Type.FullName == name || x.Type.Name == name);
         }
 
-        /// <summary>
-        /// Load an archive from an existing file.
-        /// </summary>
-        /// <param name="path">Absolute or relative path to a resource archive file</param>
-        /// <returns>Archive loaded from the given file</returns>
         public static Archive FromFile(String path)
         {
             return FromStream(File.OpenRead(path));
         }
 
-        /// <summary>
-        /// Load an archive from a stream.
-        /// </summary>
-        /// <param name="stream">Stream containing a resource archive</param>
-        /// <returns>Archive loaded from the given stream</returns>
         public static Archive FromStream(Stream stream)
         {
             return new PackedArchive(stream);
@@ -103,7 +95,40 @@ namespace ResourceLibrary
             return new LooseArchive(directory);
         }
 
+        public static T Get<T>(params String[] locator)
+        {
+            var resType = ResourceTypeFromType(typeof(T));
+            if (resType == null) {
+                throw new FileNotFoundException(String.Join("/", locator));
+            }
+
+            foreach (var archive in _mounted) {
+                var resource = archive.Get(resType, locator.AsEnumerable());
+                if (resource != null) {
+                    return (T) resource;
+                }
+            }
+
+            throw new FileNotFoundException(String.Join("/", locator));
+        }
+
+        public static IEnumerable<String> GetAllNames<T>(params String[] locator)
+        {
+            if (typeof(T) == typeof(Archive)) {
+                return _mounted.SelectMany(x => x.GetAllDirectories(locator)).Distinct();
+            }
+
+            var resType = ResourceTypeFromType(typeof(T));
+            if (resType == null) {
+                throw new FileNotFoundException(String.Join("/", locator));
+            }
+        
+            return _mounted.SelectMany(x => x.GetAllNames(resType, locator)).Distinct();
+        }
+
         public bool IsRoot { get; private set; }
+
+        public bool IsMounted { get { return _mounted.Contains(this); } }
 
         protected Archive(bool root)
         {
@@ -116,20 +141,53 @@ namespace ResourceLibrary
         }
 
         internal abstract Object Get(ResourceType resType, IEnumerable<String> locator);
+        internal abstract Archive GetInnerArchive(String name);
+
+        internal IEnumerable<String> GetAllNames(ResourceType resType, IEnumerable<String> locator)
+        {
+            if (locator.Count() == 0) {
+                return GetResources()
+                    .Where(x => x.Value == resType)
+                    .Select(x => x.Key);
+            }
+
+            var name = locator.First();
+            var inner = GetInnerArchive(name);
+
+            if (inner == null) return Enumerable.Empty<String>();
+
+            return inner.GetAllNames(resType, locator.Skip(1));
+        }
+
+        internal IEnumerable<String> GetAllDirectories(IEnumerable<String> locator)
+        {
+            if (locator.Count() == 0) {
+                return GetInnerArchives().Select(x => x.Key);
+            }
+
+            var name = locator.First();
+            var inner = GetInnerArchive(name);
+
+            if (inner == null) return Enumerable.Empty<String>();
+
+            return inner.GetAllDirectories(locator.Skip(1));
+        }
 
         internal abstract IEnumerable<KeyValuePair<String, ResourceType>> GetResources();
         internal abstract IEnumerable<KeyValuePair<String, Archive>> GetInnerArchives();
 
-        public T Get<T>(params String[] locator)
+        public Archive Mount()
         {
-            var resType = ResourceTypeFromType(typeof(T));
-            if (resType == null) {
-                throw new FileNotFoundException(String.Join("/", locator));
-            }
-
-            return (T) Get(resType, locator.AsEnumerable());
+            _mounted.Add(this);
+            return this;
         }
 
+        public Archive Unmount()
+        {
+            _mounted.Remove(this);
+            return this;
+        }
+        
         public void Save(String path)
         {
             using (var stream = File.Create(path)) {
@@ -223,6 +281,9 @@ namespace ResourceLibrary
             }
         }
 
-        public virtual void Dispose() { }
+        public virtual void Dispose()
+        {
+            if (IsMounted) Unmount();
+        }
     }
 }
