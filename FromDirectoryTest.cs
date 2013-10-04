@@ -22,18 +22,27 @@ namespace UnitTests
         private void TestComplexArchive(String description)
         {
             var actual = Directory.GetDirectories("../../TestData/complex/images/tiles/floor")
-                .Select(x => Path.GetFileName(x)).OrderBy(x => x);
+                .Select(x => Path.GetFileName(x)).OrderBy(x => x)
+                .ToArray();
 
-            var names = Archive.GetAllNames<Archive>("images", "tiles", "floor");
+            var names = Archive.GetAllNames<Archive>("images", "tiles", "floor").ToArray();
 
+            Assert.AreEqual(actual.Length, names.Length);
             Assert.IsTrue(actual.Zip(names, (x, y) => x == y).All(x => x));
 
-            names = Archive.GetAllNames<Bitmap>("images", "ents", "human");
+            ////
+
+            actual = Directory.GetFiles("../../TestData/complex/images/ents/human")
+                .Where(x => Path.GetExtension(x) == ".png")
+                .Select(x => Path.GetFileNameWithoutExtension(x)).OrderBy(x => x)
+                .ToArray();
+
+            names = Archive.GetAllNames<Bitmap>("images", "ents", "human").ToArray();
             
-            Debug.WriteLine("Human anim frames");
-            foreach (var name in names) {
-                Debug.WriteLine(name);
-            }
+            Assert.AreEqual(actual.Length, names.Length);
+            Assert.IsTrue(actual.Zip(names, (x, y) => x == y).All(x => x));
+
+            ////
 
             var bmp = Archive.Get<Bitmap>("images", "ents", "human");
 
