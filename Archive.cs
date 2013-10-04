@@ -100,6 +100,11 @@ namespace ResourceLibrary
             return Get<T>(locator.AsEnumerable());
         }
 
+        public static T Get<T>(String[] locatorPrefix, params String[] locatorSuffix)
+        {
+            return Get<T>(locatorPrefix.Concat(locatorSuffix));
+        }
+
         public static T Get<T>(IEnumerable<String> locator)
         {
             var resType = ResourceTypeFromType(typeof(T));
@@ -120,6 +125,11 @@ namespace ResourceLibrary
         public static IEnumerable<String> GetAllNames<T>(params String[] locator)
         {
             return GetAllNames<T>(locator.AsEnumerable());
+        }
+
+        public static IEnumerable<String> GetAllNames<T>(String[] locatorPrefix, params String[] locatorSuffix)
+        {
+            return GetAllNames<T>(locatorPrefix.Concat(locatorSuffix));
         }
 
         public static IEnumerable<String> GetAllNames<T>(IEnumerable<String> locator)
