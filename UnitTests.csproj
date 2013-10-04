@@ -52,13 +52,15 @@
   </Choose>
   <ItemGroup>
     <Compile Include="FromDirectoryTest.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ResourceLibrary\ResourceLibrary.csproj">
       <Project>{23056aef-0a9a-478a-8581-3c4b452fd940}</Project>
       <Name>ResourceLibrary</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Properties\" />
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '10.0' And '$(IsCodedUITest)' == 'True'">
