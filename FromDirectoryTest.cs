@@ -11,17 +11,21 @@ namespace UnitTests
     [TestClass]
     public class FromDirectoryTest
     {
+        private static readonly String _sTestDataDir = "../../testdata";
+
         [TestMethod]
         public void Empty()
         {
-            using (var archive = Archive.FromDirectory("../../TestData/empty").Mount()) {
+            var path = Path.Combine(_sTestDataDir, "empty");
+            using (var archive = Archive.FromDirectory(path).Mount()) {
                 archive.Save("../../TestData/empty.dat");
             }
         }
 
         private void TestComplexArchive(String description)
         {
-            var actual = Directory.GetDirectories("../../TestData/complex/images/tiles/floor")
+            var path = Path.Combine(_sTestDataDir, "complex/images/tiles/floor");
+            var actual = Directory.GetDirectories(path)
                 .Select(x => Path.GetFileName(x)).OrderBy(x => x)
                 .ToArray();
 
@@ -31,8 +35,9 @@ namespace UnitTests
             Assert.IsTrue(actual.Zip(names, (x, y) => x == y).All(x => x));
 
             ////
-
-            actual = Directory.GetFiles("../../TestData/complex/images/ents/human")
+            
+            path = Path.Combine(_sTestDataDir, "complex/images/ents/human");
+            actual = Directory.GetFiles(path)
                 .Where(x => Path.GetExtension(x) == ".png")
                 .Select(x => Path.GetFileNameWithoutExtension(x)).OrderBy(x => x)
                 .ToArray();
@@ -53,15 +58,20 @@ namespace UnitTests
         [TestMethod]
         public void Complex()
         {
-            using (var archive = Archive.FromDirectory("../../TestData/complex").Mount()) {
+            var path = Path.Combine(_sTestDataDir, "complex");
+            using (var archive = Archive.FromDirectory(path).Mount()) {
                 TestComplexArchive("Loose");
                 archive.Save("../../TestData/complex.dat");
             }
-            using (var archive = Archive.FromFile("../../TestData/complex.dat").Mount()) {
+            
+            path = Path.Combine(_sTestDataDir, "complex.dat");
+            using (var archive = Archive.FromFile(path).Mount()) {
                 TestComplexArchive("Packed 1st gen");
                 archive.Save("../../TestData/complex2.dat");
             }
-            using (var archive = Archive.FromFile("../../TestData/complex2.dat").Mount()) {
+            
+            path = Path.Combine(_sTestDataDir, "complex2.dat");
+            using (var archive = Archive.FromFile(path).Mount()) {
                 TestComplexArchive("Packed 2nd gen");
             }
         }
