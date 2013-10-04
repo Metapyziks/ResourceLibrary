@@ -18,9 +18,9 @@ namespace ResourceLibrary
             _directory = Path.GetFullPath(directory);
         }
 
-        internal override Object Get(ResourceType resType, params string[] locator)
+        internal override Object Get(ResourceType resType, IEnumerable<String> locator)
         {
-            var joined = Path.Combine(_directory, Path.Combine(locator));
+            var joined = Path.Combine(_directory, Path.Combine(locator.ToArray()));
             var path = resType.Extensions.Select(x => String.Format("{0}{1}", joined, x))
                 .FirstOrDefault(x => File.Exists(x));
 

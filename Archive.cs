@@ -8,10 +8,10 @@ using System.Threading.Tasks;
 
 namespace ResourceLibrary
 {
-    public abstract class Archive
+    public abstract class Archive : IDisposable
     {
-        internal const ushort Alignment = 0x0001;
-        internal const uint Version = 0x00000000;
+        internal const int Alignment = 0x00000001;
+        internal const int Version = 0x00000000;
         
         internal static readonly String MagicWord = "RSAR";
 
@@ -68,6 +68,16 @@ namespace ResourceLibrary
             return _resTypes.Values.FirstOrDefault(x => x.Extensions.Contains(extension));
         }
 
+        internal static ResourceType ResourceTypeFromType(Type type)
+        {
+            return _resTypes.ContainsKey(type) ? _resTypes[type] : null;
+        }
+
+        internal static ResourceType ResourceTypeFromTypeName(String name)
+        {
+            return _resTypes.Values.FirstOrDefault(x => x.Type.FullName == name || x.Type.Name == name);
+        }
+
         /// <summary>
         /// Load an archive from an existing file.
         /// </summary>
@@ -75,9 +85,7 @@ namespace ResourceLibrary
         /// <returns>Archive loaded from the given file</returns>
         public static Archive FromFile(String path)
         {
-            using (var fileStream = File.OpenRead(path)) {
-                return FromStream(fileStream);
-            }
+            return FromStream(File.OpenRead(path));
         }
 
         /// <summary>
@@ -102,10 +110,25 @@ namespace ResourceLibrary
             IsRoot = root;
         }
 
-        internal abstract Object Get(ResourceType resType, params String[] locator);
+        internal Object Get(ResourceType resType, params String[] locator)
+        {
+            return Get(resType, locator.AsEnumerable());
+        }
+
+        internal abstract Object Get(ResourceType resType, IEnumerable<String> locator);
 
         internal abstract IEnumerable<KeyValuePair<String, ResourceType>> GetResources();
         internal abstract IEnumerable<KeyValuePair<String, Archive>> GetInnerArchives();
+
+        public T Get<T>(params String[] locator)
+        {
+            var resType = ResourceTypeFromType(typeof(T));
+            if (resType == null) {
+                throw new FileNotFoundException(String.Join("/", locator));
+            }
+
+            return (T) Get(resType, locator.AsEnumerable());
+        }
 
         public void Save(String path)
         {
@@ -130,69 +153,76 @@ namespace ResourceLibrary
 
         private void Save(BinaryWriter writer)
         {
+            var types = _resTypes.Keys.ToList();
+
             if (IsRoot) {
                 writer.Write(MagicWord.ToCharArray());
                 writer.Write(Version);
+                
+                writer.Write(types.Count);
+                foreach (var type in types) {
+                    writer.Write(type.FullName);
+                }
             }
 
-            var inners = GetInnerArchives().ToArray();
-            var resources = GetResources().ToArray();
+            var inners = GetInnerArchives().OrderBy(x => x.Key).ToArray();
+            var resources = GetResources().OrderBy(x => x.Key).ToArray();
 
             writer.Write(inners.Length);
             writer.Write(resources.Length);
-
-            writer.Flush();
-            long innerPos = writer.BaseStream.Position;
-
-            foreach (var kv in inners) {
-                writer.Write(GetNameBytes(kv.Key));
-                writer.Write((long) 0);
-            }
             
-            writer.Flush();
-            long resourcePos = writer.BaseStream.Position;
+            var innerPositions = new long[inners.Length];
+            var resourcePositions = new long[resources.Length];
 
-            foreach (var kv in resources) {
-                writer.Write(GetNameBytes(kv.Key));
-                writer.Write((long) 0);
-            }
-            
             int i = 0;
             foreach (var kv in inners) {
-                writer.Flush();
+                writer.Write(kv.Key);
+                writer.Write(-1);
+                innerPositions[i++] = writer.BaseStream.Position;
+                writer.Write((long) 0);
+                writer.Write((long) 0);
+            }
+            
+            i = 0;
+            foreach (var kv in resources) {
+                writer.Write(kv.Key);
+                writer.Write(types.IndexOf(kv.Value.Type));
+                resourcePositions[i++] = writer.BaseStream.Position;
+                writer.Write((long) 0);
+                writer.Write((long) 0);
+            }
+            
+            i = 0;
+            foreach (var kv in inners) {
                 long start = writer.BaseStream.Position;
-
                 kv.Value.Save(writer);
-
-                writer.Flush();
                 long end = writer.BaseStream.Position;
 
-                writer.BaseStream.Seek(innerPos + 32 * i++, SeekOrigin.Begin);
+                writer.BaseStream.Seek(innerPositions[i++], SeekOrigin.Begin);
                 writer.Write(start);
+                writer.Write(end - start);
                 writer.BaseStream.Seek(end, SeekOrigin.Begin);
             }
             
             i = 0;
             foreach (var kv in resources) {
-                writer.Flush();
-
                 var offset = writer.BaseStream.Position % Alignment;
                 if (offset != 0) {
                     writer.BaseStream.Seek(Alignment - offset, SeekOrigin.Current);
                 }
 
                 long start = writer.BaseStream.Position;
-
                 var resource = Get(kv.Value, kv.Key);
                 kv.Value.Save(writer.BaseStream, resource);
-
-                writer.Flush();
                 long end = writer.BaseStream.Position;
 
-                writer.BaseStream.Seek(resourcePos + 32 * i++, SeekOrigin.Begin);
+                writer.BaseStream.Seek(resourcePositions[i++], SeekOrigin.Begin);
                 writer.Write(start);
+                writer.Write(end - start);
                 writer.BaseStream.Seek(end, SeekOrigin.Begin);
             }
         }
+
+        public virtual void Dispose() { }
     }
 }
