@@ -42,8 +42,9 @@
   <ItemGroup>
     <Compile Include="Archive.cs" />
     <Compile Include="DefaultResourceTypes.cs" />
+    <Compile Include="LooseArchive.cs" />
+    <Compile Include="PackedArchive.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Resource.cs" />
     <Compile Include="ResourceType.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

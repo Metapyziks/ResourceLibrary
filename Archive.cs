@@ -8,9 +8,12 @@ using System.Threading.Tasks;
 
 namespace ResourceLibrary
 {
-    public sealed class Archive
+    public abstract class Archive
     {
-        public const ushort Version = 0x0000;
+        internal const ushort Alignment = 0x0001;
+        internal const uint Version = 0x00000000;
+        
+        internal static readonly String MagicWord = "RSAR";
 
         private static Dictionary<Type, ResourceType> _resTypes;
 
@@ -60,6 +63,11 @@ namespace ResourceLibrary
             }
         }
 
+        internal static ResourceType ResourceTypeFromExtension(String extension)
+        {
+            return _resTypes.Values.FirstOrDefault(x => x.Extensions.Contains(extension));
+        }
+
         /// <summary>
         /// Load an archive from an existing file.
         /// </summary>
@@ -79,61 +87,112 @@ namespace ResourceLibrary
         /// <returns>Archive loaded from the given stream</returns>
         public static Archive FromStream(Stream stream)
         {
-            throw new NotImplementedException();
+            return new PackedArchive(stream);
         }
 
-        public static Archive FromDirectory(String path)
+        public static Archive FromDirectory(String directory)
         {
-            return new Archive().LoadFromDirectory(path);
+            return new LooseArchive(directory);
         }
 
-        private Dictionary<String, Archive> _innerArchives;
-        private Dictionary<ResourceType, Dictionary<String, Resource>> _resources;
+        public bool IsRoot { get; private set; }
 
-        private Archive()
+        protected Archive(bool root)
         {
-            _innerArchives = new Dictionary<string, Archive>();
-            _resources = new Dictionary<ResourceType, Dictionary<string, Resource>>();
+            IsRoot = root;
         }
 
-        private Archive LoadFromDirectory(String path)
+        internal abstract Object Get(ResourceType resType, params String[] locator);
+
+        internal abstract IEnumerable<KeyValuePair<String, ResourceType>> GetResources();
+        internal abstract IEnumerable<KeyValuePair<String, Archive>> GetInnerArchives();
+
+        public void Save(String path)
         {
-            path = Path.GetFullPath(path);
+            using (var stream = File.Create(path)) {
+                Save(stream);
+            }
+        }
 
-            foreach (var file in Directory.GetFiles(path)) {
-                var extension = Path.GetExtension(file);
-                
-                var resType = _resTypes.Values.FirstOrDefault(x => x.Extensions.Contains(extension));
-                if (resType == null) continue;
+        public void Save(Stream stream)
+        {
+            var writer = new BinaryWriter(stream);
+            Save(writer);
+            writer.Flush();
+        }
 
-                var res = new Resource();
-                try {
-                    using (var stream = File.OpenRead(file)) {
-                        res.Value = resType.Load(stream);
-                    }
-                } catch {
-                    continue;
-                }
+        private static char[] GetNameBytes(String name)
+        {
+            return name.ToCharArray()
+                .Concat(Enumerable.Range(0, 24).Select(x => '\0'))
+                .Take(24).ToArray();
+        }
 
-                if (!_resources.ContainsKey(resType)) {
-                    _resources.Add(resType, new Dictionary<string,Resource>());
-                }
-
-                _resources[resType].Add(Path.GetFileNameWithoutExtension(file), res);
+        private void Save(BinaryWriter writer)
+        {
+            if (IsRoot) {
+                writer.Write(MagicWord.ToCharArray());
+                writer.Write(Version);
             }
 
-            foreach (var dir in Directory.GetDirectories(path)) {
-                var name = Path.GetFileName(dir);
-                var inner = Archive.FromDirectory(dir);
-                _innerArchives.Add(name, inner);
+            var inners = GetInnerArchives().ToArray();
+            var resources = GetResources().ToArray();
+
+            writer.Write(inners.Length);
+            writer.Write(resources.Length);
+
+            writer.Flush();
+            long innerPos = writer.BaseStream.Position;
+
+            foreach (var kv in inners) {
+                writer.Write(GetNameBytes(kv.Key));
+                writer.Write((long) 0);
             }
+            
+            writer.Flush();
+            long resourcePos = writer.BaseStream.Position;
 
-            return this;
-        }
+            foreach (var kv in resources) {
+                writer.Write(GetNameBytes(kv.Key));
+                writer.Write((long) 0);
+            }
+            
+            int i = 0;
+            foreach (var kv in inners) {
+                writer.Flush();
+                long start = writer.BaseStream.Position;
 
-        private void Save(String path)
-        {
-            throw new NotImplementedException();
+                kv.Value.Save(writer);
+
+                writer.Flush();
+                long end = writer.BaseStream.Position;
+
+                writer.BaseStream.Seek(innerPos + 32 * i++, SeekOrigin.Begin);
+                writer.Write(start);
+                writer.BaseStream.Seek(end, SeekOrigin.Begin);
+            }
+            
+            i = 0;
+            foreach (var kv in resources) {
+                writer.Flush();
+
+                var offset = writer.BaseStream.Position % Alignment;
+                if (offset != 0) {
+                    writer.BaseStream.Seek(Alignment - offset, SeekOrigin.Current);
+                }
+
+                long start = writer.BaseStream.Position;
+
+                var resource = Get(kv.Value, kv.Key);
+                kv.Value.Save(writer.BaseStream, resource);
+
+                writer.Flush();
+                long end = writer.BaseStream.Position;
+
+                writer.BaseStream.Seek(resourcePos + 32 * i++, SeekOrigin.Begin);
+                writer.Write(start);
+                writer.BaseStream.Seek(end, SeekOrigin.Begin);
+            }
         }
     }
 }
