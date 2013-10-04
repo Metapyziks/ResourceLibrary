@@ -12,7 +12,7 @@ namespace ResourceLibrary
     internal static class DefaultResourceTypes
     {
         [ResourceTypeRegistration]
-        public static void Register()
+        public static void RegisterResourceType()
         {
             Archive.Register<Bitmap>(SaveBitmap, LoadBitmap, ".png", ".gif", ".jpg", ".jpeg", ".ico");
         }

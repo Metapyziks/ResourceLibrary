@@ -97,13 +97,18 @@ namespace ResourceLibrary
 
         public static T Get<T>(params String[] locator)
         {
+            return Get<T>(locator.AsEnumerable());
+        }
+
+        public static T Get<T>(IEnumerable<String> locator)
+        {
             var resType = ResourceTypeFromType(typeof(T));
             if (resType == null) {
                 throw new FileNotFoundException(String.Join("/", locator));
             }
 
             foreach (var archive in _mounted) {
-                var resource = archive.Get(resType, locator.AsEnumerable());
+                var resource = archive.Get(resType, locator);
                 if (resource != null) {
                     return (T) resource;
                 }
@@ -113,6 +118,11 @@ namespace ResourceLibrary
         }
 
         public static IEnumerable<String> GetAllNames<T>(params String[] locator)
+        {
+            return GetAllNames<T>(locator.AsEnumerable());
+        }
+
+        public static IEnumerable<String> GetAllNames<T>(IEnumerable<String> locator)
         {
             if (typeof(T) == typeof(Archive)) {
                 return _mounted.SelectMany(x => x.GetAllDirectories(locator)).Distinct();
