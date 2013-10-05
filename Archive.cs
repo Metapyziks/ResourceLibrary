@@ -89,11 +89,6 @@ namespace ResourceLibrary
             return Get<T>(locator.AsEnumerable());
         }
 
-        public static T Get<T>(String[] locatorPrefix, params String[] locatorSuffix)
-        {
-            return Get<T>(locatorPrefix.Concat(locatorSuffix));
-        }
-
         public static T Get<T>(IEnumerable<String> locator)
         {
             var resType = ResourceTypeFromType(typeof(T));
@@ -101,7 +96,8 @@ namespace ResourceLibrary
                 throw new FileNotFoundException(String.Join("/", locator));
             }
 
-            foreach (var archive in _mounted) {
+            for (int i = _mounted.Count - 1; i >= 0; --i) {
+                var archive = _mounted[i];
                 var resource = archive.Get(resType, locator);
                 if (resource != null) {
                     return (T) resource;
