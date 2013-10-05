@@ -19,7 +19,7 @@ namespace ResourceLibrary
 
         public static implicit operator String[](ResourceLocator locator)
         {
-            return (locator ?? None).Parts;
+            return (locator ?? None).Parts.ToArray();
         }
 
         public static implicit operator ResourceLocator(String[] locator)
@@ -32,13 +32,28 @@ namespace ResourceLibrary
             return new ResourceLocator(locator.Split(new char[] { '/' }, StringSplitOptions.RemoveEmptyEntries));
         }
 
-        public String[] Parts { get; private set; }
+        public IEnumerable<String> Parts { get; private set; }
 
-        public int Length { get { return Parts.Length; } }
+        public int Length { get { return Parts.Count(); } }
 
         public ResourceLocator(params String[] locator)
         {
             Parts = locator;
+        }
+
+        public ResourceLocator Prepend(ResourceLocator locator)
+        {
+            return locator.Append(this);
+        }
+
+        public ResourceLocator Append(params String[] locator)
+        {
+            return new ResourceLocator(Parts.Concat(locator).ToArray());
+        }
+
+        public ResourceLocator Append(ResourceLocator locator)
+        {
+            return new ResourceLocator(Parts.Concat(locator.Parts).ToArray());
         }
 
         public IEnumerator<string> GetEnumerator()
@@ -54,6 +69,17 @@ namespace ResourceLibrary
         public override string ToString()
         {
             return String.Join("/", Parts);
+        }
+
+        public override bool Equals(object obj)
+        {
+            return (obj is ResourceLocator || obj is String || obj is String[])
+                && Equals((ResourceLocator) obj);
+        }
+
+        public bool Equals(ResourceLocator locator)
+        {
+            return locator.Length == Length && locator.Parts.Zip(Parts, (x, y) => x.Equals(y)).All(x => x);
         }
     }
 
