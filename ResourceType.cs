@@ -13,6 +13,45 @@ namespace ResourceLibrary
         Compressed = 1
     }
 
+    public class ResourceLocator : IEnumerable<String>
+    {
+        public static readonly ResourceLocator None = new ResourceLocator();
+
+        public static implicit operator String[](ResourceLocator locator)
+        {
+            return (locator ?? None).Parts;
+        }
+
+        public static implicit operator ResourceLocator(String[] locator)
+        {
+            return new ResourceLocator(locator);
+        }
+        
+        public static implicit operator ResourceLocator(String locator)
+        {
+            return new ResourceLocator(locator.Split(new char[] { '/' }, StringSplitOptions.RemoveEmptyEntries));
+        }
+
+        public String[] Parts { get; private set; }
+
+        public int Length { get { return Parts.Length; } }
+
+        public ResourceLocator(params String[] locator)
+        {
+            Parts = locator;
+        }
+
+        public IEnumerator<string> GetEnumerator()
+        {
+            return Parts.AsEnumerable().GetEnumerator();
+        }
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+        {
+            return Parts.GetEnumerator();
+        }
+    }
+
     [AttributeUsage(AttributeTargets.Method)]
     public sealed class ResourceTypeRegistrationAttribute : Attribute { }
 

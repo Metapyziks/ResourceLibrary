@@ -144,6 +144,7 @@ namespace ResourceLibrary
                         using (var zipStream = new GZipStream(srcStream, CompressionMode.Decompress)) {
                             using (var dstStream = new MemoryStream()) {
                                 zipStream.CopyTo(dstStream);
+                                dstStream.Seek(0, SeekOrigin.Begin);
                                 return resType.Load(dstStream);
                             }
                         }
