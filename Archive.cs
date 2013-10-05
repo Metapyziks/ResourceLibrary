@@ -107,6 +107,11 @@ namespace ResourceLibrary
             throw new FileNotFoundException(String.Join("/", locator));
         }
 
+        public static IEnumerable<ResourceLocator> FindAll<T>(bool recursive = false)
+        {
+            return FindAll<T>(ResourceLocator.None, recursive);
+        }
+
         public static IEnumerable<ResourceLocator> FindAll<T>(ResourceLocator locator, bool recursive = false)
         {
             if (typeof(T) == typeof(Archive)) {
