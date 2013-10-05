@@ -50,6 +50,11 @@ namespace ResourceLibrary
         {
             return Parts.GetEnumerator();
         }
+
+        public override string ToString()
+        {
+            return String.Join("/", Parts);
+        }
     }
 
     [AttributeUsage(AttributeTargets.Method)]
