@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -137,11 +138,27 @@ namespace ResourceLibrary
 
                 _stream.Seek(position.Offset, SeekOrigin.Begin);
                 _stream.Read(bytes, 0, (int) position.Length);
-
-                using (var memStream = new MemoryStream(bytes)) {
-                    return resType.Load(memStream);
-                }
+                
+                if (resType.Format.HasFlag(ResourceFormat.Compressed)) {
+                    using (var srcStream = new MemoryStream(bytes)) {
+                        using (var zipStream = new GZipStream(srcStream, CompressionMode.Decompress)) {
+                            using (var dstStream = new MemoryStream()) {
+                                zipStream.CopyTo(dstStream);
+                                return resType.Load(dstStream);
+                            }
+                        }
+                    }
+                } else {
+                    using (var memStream = new MemoryStream(bytes)) {
+                        return resType.Load(memStream);
+                    }
+                }    
             }
+        }
+
+        internal override bool IsModified(ResourceType resType, IEnumerable<string> locator, DateTime lastAccess)
+        {
+            return false;
         }
 
         internal override Archive GetInnerArchive(string name)

@@ -33,6 +33,19 @@ namespace ResourceLibrary
             }
         }
 
+        internal override bool IsModified(ResourceType resType, IEnumerable<string> locator, DateTime lastAccess)
+        {
+            var joined = Path.Combine(_directory, Path.Combine(locator.ToArray()));
+            var path = resType.Extensions.Select(x => String.Format("{0}{1}", joined, x))
+                .FirstOrDefault(x => File.Exists(x));
+
+            if (path == null) {
+                throw new FileNotFoundException(joined);
+            }
+
+            return File.GetLastWriteTime(path) > lastAccess;
+        }
+
         internal override Archive GetInnerArchive(string name)
         {
             var path = Path.Combine(_directory, name);

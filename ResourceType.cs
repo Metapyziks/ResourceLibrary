@@ -7,6 +7,12 @@ using System.Threading.Tasks;
 
 namespace ResourceLibrary
 {
+    public enum ResourceFormat
+    {
+        Default = 0,
+        Compressed = 1
+    }
+
     [AttributeUsage(AttributeTargets.Method)]
     public sealed class ResourceTypeRegistrationAttribute : Attribute { }
 
@@ -16,11 +22,13 @@ namespace ResourceLibrary
     internal abstract class ResourceType
     {
         public Type Type { get; private set; }
+        public ResourceFormat Format { get; private set; }
         public String[] Extensions { get; private set; }
 
-        protected ResourceType(Type type, params String[] extensions)
+        protected ResourceType(Type type, ResourceFormat format, params String[] extensions)
         {
             Type = type;
+            Format = format;
             Extensions = extensions;
         }
         
@@ -33,9 +41,9 @@ namespace ResourceLibrary
         public SaveResourceDelegate<T> SaveDelegate { get; private set; }
         public LoadResourceDelegate<T> LoadDelegate { get; private set; }
 
-        public ResourceType(SaveResourceDelegate<T> saveDelegate,
+        public ResourceType(ResourceFormat format, SaveResourceDelegate<T> saveDelegate,
             LoadResourceDelegate<T> loadDelegate, params String[] extensions)
-            : base(typeof(T), extensions)
+            : base(typeof(T), format, extensions)
         {
             SaveDelegate = saveDelegate;
             LoadDelegate = loadDelegate;
