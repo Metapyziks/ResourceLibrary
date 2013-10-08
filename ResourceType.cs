@@ -66,6 +66,11 @@ namespace ResourceLibrary
             return Parts.GetEnumerator();
         }
 
+        public ResourceLocator this[ResourceLocator append]
+        {
+            get { return Append(append); }
+        }
+
         public override string ToString()
         {
             return String.Join("/", Parts);
