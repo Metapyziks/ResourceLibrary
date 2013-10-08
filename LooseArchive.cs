@@ -20,6 +20,12 @@ namespace ResourceLibrary
 
         internal override Object Get(ResourceType resType, IEnumerable<String> locator)
         {
+            if (locator.Count() > 1) {
+                var inner = GetInnerArchive(locator.First());
+                if (inner == null) return null;
+                return inner.Get(resType, locator.Skip(1));
+            }
+
             var joined = Path.Combine(_directory, Path.Combine(locator.ToArray()));
             var path = resType.Extensions.Select(x => String.Format("{0}{1}", joined, x))
                 .FirstOrDefault(x => File.Exists(x));
@@ -47,6 +53,11 @@ namespace ResourceLibrary
         internal override Archive GetInnerArchive(string name)
         {
             var path = Path.Combine(_directory, name);
+            while (File.Exists(path)) {
+                try {
+                    path = File.ReadAllLines(path).First().Trim();
+                } catch { break; }
+            }
             if (!Directory.Exists(path)) return null;
             return new LooseArchive(path, false);
         }
@@ -66,6 +77,22 @@ namespace ResourceLibrary
 
         internal override IEnumerable<KeyValuePair<String, Archive>> GetInnerArchives()
         {
+            foreach (var file in Directory.GetFiles(_directory)) {
+                var ext = Path.GetExtension(file);
+                if (ext == null || ext.Length == 0) {
+                    var path = file;
+                    while (File.Exists(path)) {
+                        try {
+                            path = File.ReadAllLines(path).First().Trim();
+                        } catch { break; }
+                    }
+                    if (Directory.Exists(path)) {
+                        var name = Path.GetFileName(path);
+                        var inner = new LooseArchive(path, false);
+                        yield return new KeyValuePair<String, Archive>(name, inner);
+                    }
+                }
+            }
             foreach (var dir in Directory.GetDirectories(_directory)) {
                 var name = Path.GetFileName(dir);
                 var inner = new LooseArchive(dir, false);
