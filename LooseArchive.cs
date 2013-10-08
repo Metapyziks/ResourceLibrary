@@ -24,9 +24,7 @@ namespace ResourceLibrary
             var path = resType.Extensions.Select(x => String.Format("{0}{1}", joined, x))
                 .FirstOrDefault(x => File.Exists(x));
 
-            if (path == null) {
-                throw new FileNotFoundException(joined);
-            }
+            if (path == null) return null;
 
             using (var stream = File.OpenRead(path)) {
                 return resType.Load(stream);
