@@ -82,6 +82,11 @@ namespace ResourceLibrary
                 && Equals((ResourceLocator) obj);
         }
 
+        public override int GetHashCode()
+        {
+            return Parts.Aggregate(0, (x, y) => x ^ y.GetHashCode());
+        }
+
         public bool Equals(ResourceLocator locator)
         {
             return locator.Length == Length && locator.Parts.Zip(Parts, (x, y) => x.Equals(y)).All(x => x);

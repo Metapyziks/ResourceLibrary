@@ -123,7 +123,8 @@ namespace ResourceLibrary
                 throw new FileNotFoundException(String.Join("/", locator));
             }
         
-            return _mounted.SelectMany(x => x.FindAll(resType, locator, recursive)).Distinct().Select(x => x.Prepend(locator));
+            return _mounted.SelectMany(x => x.FindAll(resType, locator, recursive))
+                .Distinct().Select(x => x.Prepend(locator));
         }
 
         public bool IsRoot { get; private set; }

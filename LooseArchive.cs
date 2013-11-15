@@ -83,11 +83,17 @@ namespace ResourceLibrary
                     var path = file;
                     while (File.Exists(path)) {
                         try {
-                            path = File.ReadAllLines(path).First().Trim();
+                            var next = File.ReadAllLines(path).First().Trim();
+
+                            if (!Path.IsPathRooted(next)) {
+                                path = Path.Combine(_directory, next);
+                            } else {
+                                path = next;
+                            }
                         } catch { break; }
                     }
                     if (Directory.Exists(path)) {
-                        var name = Path.GetFileName(path);
+                        var name = Path.GetFileName(file);
                         var inner = new LooseArchive(path, false);
                         yield return new KeyValuePair<String, Archive>(name, inner);
                     }
