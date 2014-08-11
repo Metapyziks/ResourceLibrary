@@ -14,15 +14,35 @@ namespace ResourceLibrary
         
         internal static readonly String MagicWord = "RSAR";
 
+        private static Stack<ResourceType[]> _typeStack;
+
         private static Dictionary<Type, ResourceType> _resTypes;
         private static List<Archive> _mounted;
 
         static Archive()
         {
+            _typeStack = new Stack<ResourceType[]>();
+
             _resTypes = new Dictionary<Type, ResourceType>();
             _mounted = new List<Archive>();
 
             RegisterAll(Assembly.GetExecutingAssembly());
+        }
+
+        public static void PushRegisteredTypes()
+        {
+            _typeStack.Push(_resTypes.Values.ToArray());
+        }
+
+        public static void PopRegisteredTypes()
+        {
+            _resTypes.Clear();
+
+            if (_typeStack.Count > 0) {
+                foreach (var resType in _typeStack.Pop()) {
+                    _resTypes.Add(resType.Type, resType);
+                }
+            }
         }
 
         public static bool IsRegistered<T>()

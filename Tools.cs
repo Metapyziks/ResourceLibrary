@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace ResourceLibrary
 {
-    internal static class Tools
+    public static class Tools
     {
         public static String CombinePath(IEnumerable<String> path)
         {
