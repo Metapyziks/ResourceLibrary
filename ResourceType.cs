@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace ResourceLibrary
 {
@@ -69,7 +71,7 @@ namespace ResourceLibrary
 
         public override string ToString()
         {
-            return String.Join("/", Parts);
+            return String.Join("/", Parts.ToArray());
         }
 
         public override bool Equals(object obj)
@@ -85,7 +87,16 @@ namespace ResourceLibrary
 
         public bool Equals(ResourceLocator locator)
         {
-            return locator.Length == Length && locator.Parts.Zip(Parts, (x, y) => x.Equals(y)).All(x => x);
+            if (locator.Length != Length) return false;
+            
+            var a = GetEnumerator();
+            var b = locator.GetEnumerator();
+
+            while (a.MoveNext() && b.MoveNext()) {
+                if (!a.Current.Equals(b.Current)) return false;
+            }
+
+            return true;
         }
     }
 

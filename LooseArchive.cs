@@ -37,7 +37,7 @@ namespace ResourceLibrary
 
         internal override bool IsModified(ResourceType resType, IEnumerable<string> locator, DateTime lastAccess)
         {
-            var joined = Path.Combine(_directory, Path.Combine(locator.ToArray()));
+            var joined = Path.Combine(_directory, Tools.CombinePath(locator));
             var path = resType.Extensions.Select(x => String.Format("{0}{1}", joined, x))
                 .FirstOrDefault(x => File.Exists(x));
 

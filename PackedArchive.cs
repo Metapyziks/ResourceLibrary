@@ -137,7 +137,7 @@ namespace ResourceLibrary
                 _stream.Seek(position.Offset, SeekOrigin.Begin);
                 _stream.Read(bytes, 0, (int) position.Length);
                 
-                if (resType.Format.HasFlag(ResourceFormat.Compressed)) {
+                if ((resType.Format & ResourceFormat.Compressed) == ResourceFormat.Compressed) {
                     using (var srcStream = new MemoryStream(bytes)) {
                         using (var zipStream = new GZipStream(srcStream, CompressionMode.Decompress)) {
                             using (var dstStream = new MemoryStream()) {

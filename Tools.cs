@@ -14,5 +14,14 @@ namespace ResourceLibrary
 
             return Path.Combine(path.First(), CombinePath(path.Skip(1)));
         }
+
+        public static void CopyTo(this Stream from, Stream dest, int bufferSize = 2048)
+        {
+            var buffer = new byte[bufferSize];
+            int read;
+            while ((read = from.Read(buffer, 0, bufferSize)) > 0) {
+                dest.Write(buffer, 0, read);
+            }
+        }
     }
 }

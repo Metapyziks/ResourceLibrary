@@ -92,7 +92,7 @@ namespace ResourceLibrary
         {
             var resType = ResourceTypeFromType(typeof(T));
             if (resType == null) {
-                throw new FileNotFoundException(String.Join("/", locator));
+                throw new FileNotFoundException(String.Join("/", locator.ToArray()));
             }
 
             for (int i = _mounted.Count - 1; i >= 0; --i) {
@@ -103,7 +103,7 @@ namespace ResourceLibrary
                 }
             }
 
-            throw new FileNotFoundException(String.Join("/", locator));
+            throw new FileNotFoundException(String.Join("/", locator.ToArray()));
         }
 
         public static IEnumerable<ResourceLocator> FindAll<T>(bool recursive = false)
@@ -280,7 +280,7 @@ namespace ResourceLibrary
                 long start = writer.BaseStream.Position;
                 var resource = Get(kv.Value, kv.Key);
 
-                if (kv.Value.Format.HasFlag(ResourceFormat.Compressed)) {
+                if ((kv.Value.Format & ResourceFormat.Compressed) == ResourceFormat.Compressed) {
                     using (var memStream = new MemoryStream()) {
                         kv.Value.Save(memStream, resource);
                         memStream.Seek(0, SeekOrigin.Begin);

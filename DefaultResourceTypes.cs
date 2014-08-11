@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
+﻿using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Xml.Linq;
 
 namespace ResourceLibrary
@@ -32,12 +28,12 @@ namespace ResourceLibrary
 
         private static void SaveXDocument(Stream stream, XDocument resource)
         {
-            resource.Save(stream);
+            resource.Save(new StreamWriter(stream));
         }
 
         private static XDocument LoadXDocument(Stream stream)
         {
-            return XDocument.Load(stream);
+            return XDocument.Load(new StreamReader(stream));
         }
     }
 }
