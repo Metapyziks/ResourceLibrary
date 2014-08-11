@@ -6,7 +6,7 @@ using System.Reflection;
 
 namespace ResourceLibrary
 {
-    public sealed class ArchiveManager : IEnumerable<Archive>
+    public sealed class ArchiveManager : ResourceVolume, IEnumerable<Archive>
     {
         private Stack<ResourceType[]> _typeStack;
         private Dictionary<Type, ResourceType> _resTypes;
@@ -77,11 +77,12 @@ namespace ResourceLibrary
                 from type in assembly.GetTypes()
                 from method in type.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
                 where method.GetCustomAttributes(typeof(ResourceTypeRegistrationAttribute), false).Count() > 0
-                    && !method.ContainsGenericParameters && method.GetParameters().Length == 0
+                    && !method.ContainsGenericParameters && method.GetParameters().Length == 1
+                    && method.GetParameters()[0].ParameterType == typeof(ArchiveManager)
                 select method;
 
             foreach (var method in methods) {
-                method.Invoke(null, new Object[0]);
+                method.Invoke(null, new Object[] { this });
             }
         }
         internal ResourceType ResourceTypeFromExtension(String extension)
@@ -114,12 +115,7 @@ namespace ResourceLibrary
             return new LooseArchive(this, directory, true, ignore);
         }
 
-        public T Get<T>(params String[] locator)
-        {
-            return Get<T>(locator.AsEnumerable());
-        }
-
-        public T Get<T>(IEnumerable<String> locator)
+        public override T Get<T>(IEnumerable<String> locator)
         {
             var resType = ResourceTypeFromType(typeof(T));
             if (resType == null) {
@@ -137,17 +133,7 @@ namespace ResourceLibrary
             throw new FileNotFoundException(String.Join("/", locator.ToArray()));
         }
         
-        public IEnumerable<ResourceLocator> FindAll(bool recursive = false)
-        {
-            return FindAll(ResourceLocator.None, recursive);
-        }
-
-        public IEnumerable<ResourceLocator> FindAll<T>(bool recursive = false)
-        {
-            return FindAll<T>(ResourceLocator.None, recursive);
-        }
-
-        public IEnumerable<ResourceLocator> FindAll(ResourceLocator locator, bool recursive = false)
+        public override IEnumerable<ResourceLocator> FindAll(ResourceLocator locator, bool recursive = false)
         {
             return _resTypes.Values
                 .SelectMany(resType => _mounted
@@ -158,7 +144,7 @@ namespace ResourceLibrary
                 .OrderBy(x => x.ToString());
         }
 
-        public IEnumerable<ResourceLocator> FindAll<T>(ResourceLocator locator, bool recursive = false)
+        public override IEnumerable<ResourceLocator> FindAll<T>(ResourceLocator locator, bool recursive = false)
         {
             if (typeof(T) == typeof(Archive)) {
                 return _mounted.SelectMany(x => x.FindAllDirectories(locator)).Distinct();

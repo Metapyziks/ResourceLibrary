@@ -7,7 +7,7 @@ using System.Reflection;
 
 namespace ResourceLibrary
 {
-    public abstract class Archive : IDisposable
+    public abstract class Archive : ResourceVolume, IDisposable
     {
         internal const int Alignment = 0x00000100;
         internal const int Version = 0x00000000;
@@ -26,12 +26,7 @@ namespace ResourceLibrary
             IsRoot = root;
         }
 
-        public T Get<T>(params String[] locator)
-        {
-            return Get<T>(locator.AsEnumerable());
-        }
-
-        public T Get<T>(IEnumerable<String> locator)
+        public override T Get<T>(IEnumerable<String> locator)
         {
             var resType = Manager.ResourceTypeFromType(typeof(T));
             if (resType == null) {
@@ -46,17 +41,7 @@ namespace ResourceLibrary
             throw new FileNotFoundException(String.Join("/", locator.ToArray()));
         }
 
-        public IEnumerable<ResourceLocator> FindAll(bool recursive = false)
-        {
-            return FindAll(ResourceLocator.None, recursive);
-        }
-
-        public IEnumerable<ResourceLocator> FindAll<T>(bool recursive = false)
-        {
-            return FindAll<T>(ResourceLocator.None, recursive);
-        }
-
-        public IEnumerable<ResourceLocator> FindAll(ResourceLocator locator, bool recursive = false)
+        public override IEnumerable<ResourceLocator> FindAll(ResourceLocator locator, bool recursive = false)
         {
             return Manager.ResourceTypes
                 .SelectMany(resType => FindAll(resType, locator, recursive))
@@ -64,7 +49,7 @@ namespace ResourceLibrary
                 .OrderBy(x => x.ToString());
         }
 
-        public IEnumerable<ResourceLocator> FindAll<T>(ResourceLocator locator, bool recursive = false)
+        public override IEnumerable<ResourceLocator> FindAll<T>(ResourceLocator locator, bool recursive = false)
         {
             if (typeof(T) == typeof(Archive)) {
                 return FindAllDirectories(locator).Distinct();
