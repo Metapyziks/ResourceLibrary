@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ResourceLibrary
 {
@@ -20,7 +18,7 @@ namespace ResourceLibrary
 
         internal override Object Get(ResourceType resType, IEnumerable<String> locator)
         {
-            var joined = Path.Combine(_directory, Path.Combine(locator.ToArray()));
+            var joined = Path.Combine(_directory, Tools.CombinePath(locator));
             var path = resType.Extensions.Select(x => String.Format("{0}{1}", joined, x))
                 .FirstOrDefault(x => File.Exists(x));
 

@@ -5,13 +5,11 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace ResourceLibrary
 {
     internal static class DefaultResourceTypes
     {
-        [ResourceTypeRegistration]
         public static void Register()
         {
             Archive.Register<Bitmap>(SaveBitmap, LoadBitmap, ".png", ".gif", ".jpg", ".jpeg", ".ico");

@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace ResourceLibrary
 {
@@ -56,7 +55,7 @@ namespace ResourceLibrary
             var methods =
                 from type in assembly.GetTypes()
                 from method in type.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
-                where method.GetCustomAttribute<ResourceTypeRegistrationAttribute>() != null
+                where method.GetCustomAttributes(typeof(ResourceTypeRegistrationAttribute), false).Count() > 0
                     && !method.ContainsGenericParameters && method.GetParameters().Length == 0
                 select method;
 
