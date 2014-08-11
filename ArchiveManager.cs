@@ -152,7 +152,7 @@ namespace ResourceLibrary
 
             var resType = ResourceTypeFromType(typeof(T));
             if (resType == null) {
-                throw new FileNotFoundException(String.Join("/", locator));
+                throw new Exception("Unregistered resource type specified.");
             }
 
             return _mounted.SelectMany(x => x.FindAll(resType, locator, recursive))

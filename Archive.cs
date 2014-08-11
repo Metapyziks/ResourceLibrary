@@ -57,7 +57,7 @@ namespace ResourceLibrary
 
             var resType = Manager.ResourceTypeFromType(typeof(T));
             if (resType == null) {
-                throw new FileNotFoundException(String.Join("/", locator));
+                throw new Exception("Unregistered resource type specified.");
             }
 
             return FindAll(resType, locator, recursive)
