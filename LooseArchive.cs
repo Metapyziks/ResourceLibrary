@@ -9,15 +9,19 @@ namespace ResourceLibrary
     internal sealed class LooseArchive : Archive
     {
         private String _directory;
+        private ResourceLocator[] _ignore;
 
-        internal LooseArchive(String directory, bool root = true)
+        internal LooseArchive(String directory, bool root, params ResourceLocator[] ignore)
             : base(root)
         {
             _directory = Path.GetFullPath(directory);
+            _ignore = ignore;
         }
 
         internal override Object Get(ResourceType resType, IEnumerable<String> locator)
         {
+            if (_ignore.Any(x => x.IsPrefixOf(locator))) return null;
+
             if (locator.Count() > 1) {
                 var inner = GetInnerArchive(locator.First());
                 if (inner == null) return null;
@@ -41,11 +45,18 @@ namespace ResourceLibrary
             var path = resType.Extensions.Select(x => String.Format("{0}{1}", joined, x))
                 .FirstOrDefault(x => File.Exists(x));
 
-            if (path == null) {
+            if (path == null || _ignore.Any(x => x.IsPrefixOf(locator))) {
                 throw new FileNotFoundException(joined);
             }
 
             return File.GetLastWriteTime(path) > lastAccess;
+        }
+
+        private ResourceLocator[] GetInnerIgnored(string prefix)
+        {
+            return _ignore.Where(x => x.First() == prefix)
+                .Select(x => new ResourceLocator(x.Skip(1).ToArray()))
+                .ToArray();
         }
 
         internal override Archive GetInnerArchive(string name)
@@ -57,7 +68,7 @@ namespace ResourceLibrary
                 } catch { break; }
             }
             if (!Directory.Exists(path)) return null;
-            return new LooseArchive(path, false);
+            return new LooseArchive(path, false, GetInnerIgnored(name));
         }
 
         internal override IEnumerable<KeyValuePair<String, ResourceType>> GetResources()
@@ -69,6 +80,9 @@ namespace ResourceLibrary
                 if (resType == null) continue;
                 
                 var name = Path.GetFileNameWithoutExtension(file);
+
+                if (_ignore.Any(x => x.Length == 1 && x.First() == name)) continue;
+
                 yield return new KeyValuePair<String, ResourceType>(name, resType);
             }
         }
@@ -92,14 +106,21 @@ namespace ResourceLibrary
                     }
                     if (Directory.Exists(path)) {
                         var name = Path.GetFileName(file);
-                        var inner = new LooseArchive(path, false);
+
+                        if (_ignore.Any(x => x.Length == 1 && x.First() == name)) continue;
+
+                        var inner = new LooseArchive(path, false, GetInnerIgnored(name));
                         yield return new KeyValuePair<String, Archive>(name, inner);
                     }
                 }
             }
+
             foreach (var dir in Directory.GetDirectories(_directory)) {
                 var name = Path.GetFileName(dir);
-                var inner = new LooseArchive(dir, false);
+
+                if (_ignore.Any(x => x.Length == 1 && x.First() == name)) continue;
+
+                var inner = new LooseArchive(dir, false, GetInnerIgnored(name));
                 yield return new KeyValuePair<String, Archive>(name, inner);
             }
         }

@@ -4,7 +4,6 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 
 namespace ResourceLibrary
 {
@@ -78,9 +77,9 @@ namespace ResourceLibrary
             return new PackedArchive(stream);
         }
 
-        public static Archive FromDirectory(String directory)
+        public static Archive FromDirectory(String directory, params ResourceLocator[] ignore)
         {
-            return new LooseArchive(directory);
+            return new LooseArchive(directory, true, ignore);
         }
 
         public static T Get<T>(params String[] locator)
@@ -106,9 +105,25 @@ namespace ResourceLibrary
             throw new FileNotFoundException(String.Join("/", locator.ToArray()));
         }
 
+        public static IEnumerable<ResourceLocator> FindAll(bool recursive = false)
+        {
+            return FindAll(ResourceLocator.None, recursive);
+        }
+
         public static IEnumerable<ResourceLocator> FindAll<T>(bool recursive = false)
         {
             return FindAll<T>(ResourceLocator.None, recursive);
+        }
+
+        public static IEnumerable<ResourceLocator> FindAll(ResourceLocator locator, bool recursive = false)
+        {
+            return _resTypes.Values
+                .SelectMany(resType => _mounted
+                    .SelectMany(x => x
+                        .FindAll(resType, locator, recursive))
+                    .Distinct()
+                    .Select(x => x.Prepend(locator)))
+                .OrderBy(x => x.ToString());
         }
 
         public static IEnumerable<ResourceLocator> FindAll<T>(ResourceLocator locator, bool recursive = false)
@@ -123,7 +138,7 @@ namespace ResourceLibrary
             }
         
             return _mounted.SelectMany(x => x.FindAll(resType, locator, recursive))
-                .Distinct().Select(x => x.Prepend(locator));
+                .Distinct().Select(x => x.Prepend(locator)).OrderBy(x => x.ToString());
         }
 
         public bool IsRoot { get; private set; }

@@ -39,6 +39,20 @@ namespace ResourceLibrary
             Parts = locator;
         }
 
+        public bool StartsWith(IEnumerable<String> prefix)
+        {
+            if (Length < prefix.Count()) return false;
+
+            return new ResourceLocator(this.Take(prefix.Count()).ToArray()).Equals(prefix);
+        }
+
+        public bool IsPrefixOf(IEnumerable<String> locator)
+        {
+            if (Length > locator.Count()) return false;
+
+            return new ResourceLocator(locator.Take(Length).ToArray()).Equals(this);
+        }
+
         public ResourceLocator Prepend(ResourceLocator locator)
         {
             return locator.Append(this);
@@ -76,8 +90,8 @@ namespace ResourceLibrary
 
         public override bool Equals(object obj)
         {
-            return (obj is ResourceLocator || obj is String || obj is String[])
-                && Equals((ResourceLocator) obj);
+            return (obj is IEnumerable<String> && Equals((IEnumerable<String>) obj))
+                || (obj is String && Equals((ResourceLocator) obj));
         }
 
         public override int GetHashCode()
@@ -85,10 +99,10 @@ namespace ResourceLibrary
             return Parts.Aggregate(0, (x, y) => x ^ y.GetHashCode());
         }
 
-        public bool Equals(ResourceLocator locator)
+        public bool Equals(IEnumerable<String> locator)
         {
-            if (locator.Length != Length) return false;
-            
+            if (locator.Count() != Length) return false;
+
             var a = GetEnumerator();
             var b = locator.GetEnumerator();
 
