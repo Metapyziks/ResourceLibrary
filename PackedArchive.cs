@@ -34,7 +34,7 @@ namespace ResourceLibrary
             return reader.ReadInt32();
         }
 
-        private static ResourceType[] ReadResourceTypes(Stream stream)
+        private static ResourceType[] ReadResourceTypes(ArchiveManager manager, Stream stream)
         {
             var reader = new BinaryReader(stream);
 
@@ -43,7 +43,7 @@ namespace ResourceLibrary
 
             for (int i = 0; i < count; ++i) {
                 var name = reader.ReadString();
-                types[i] = Archive.ResourceTypeFromTypeName(name);
+                types[i] = manager.ResourceTypeFromTypeName(name);
             }
 
             return types;
@@ -53,11 +53,11 @@ namespace ResourceLibrary
         private Dictionary<String, Archive> _innerArchives;
         private Dictionary<ResourceType, Dictionary<String, ResourcePosition>> _resPositions;
 
-        internal PackedArchive(Stream stream)
-            : this(stream, true, ReadVersion(stream), ReadResourceTypes(stream)) { }
+        internal PackedArchive(ArchiveManager manager, Stream stream)
+            : this(manager, stream, true, ReadVersion(stream), ReadResourceTypes(manager, stream)) { }
 
-        private PackedArchive(Stream stream, bool root, int version, ResourceType[] types)
-            : base(root)
+        private PackedArchive(ArchiveManager manager, Stream stream, bool root, int version, ResourceType[] types)
+            : base(manager, root)
         {
             _stream = stream;
             _innerArchives = new Dictionary<string,Archive>();
@@ -104,7 +104,7 @@ namespace ResourceLibrary
                 var pos = kv.Value;
 
                 _stream.Position = pos;
-                var inner = new PackedArchive(_stream, false, version, types);
+                var inner = new PackedArchive(Manager, _stream, false, version, types);
 
                 _innerArchives.Add(name, inner);
             }

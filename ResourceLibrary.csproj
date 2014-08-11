@@ -41,7 +41,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Archive.cs" />
+    <Compile Include="ArchiveManager.cs" />
     <Compile Include="DefaultResourceTypes.cs" />
+    <Compile Include="ResourceTypeCollection.cs" />
     <Compile Include="Tools.cs" />
     <Compile Include="LooseArchive.cs" />
     <Compile Include="PackedArchive.cs" />

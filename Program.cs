@@ -26,12 +26,14 @@ namespace ArchiveTool
             input = Path.GetFullPath(input);
             output = output ?? String.Format("{0}.dat", input);
 
+            var manager = new ArchiveManager();
+
             foreach (var lib in libs) {
                 var asm = Assembly.LoadFrom(lib);
-                Archive.RegisterAll(asm);
+                manager.RegisterAll(asm);
             }
 
-            Archive.FromDirectory(input).Save(output);
+            manager.FromDirectory(input).Save(output);
         }
     }
 }

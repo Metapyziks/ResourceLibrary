@@ -17,17 +17,21 @@ namespace UnitTests
         public void Empty()
         {
             var path = Path.Combine(_sTestDataDir, "empty");
-            using (var archive = Archive.FromDirectory(path).Mount()) {
+
+            var manager = new ArchiveManager();
+            DefaultResourceTypes.Register(manager);
+
+            using (var archive = manager.FromDirectory(path).Mount()) {
                 archive.Save("../../TestData/empty.dat");
             }
         }
 
-        private void TestComplexArchive(String description)
+        private void TestComplexArchive(ArchiveManager manager, String description)
         {
-            var names = Archive.FindAll<Archive>(new ResourceLocator("images", "tiles", "wall")).ToArray();
-            names = Archive.FindAll<Bitmap>(new ResourceLocator("images", "ents"), true).ToArray();
-            
-            var bmp = Archive.Get<Bitmap>("images", "ents", "human");
+            var names = manager.FindAll<Archive>(new ResourceLocator("images", "tiles", "wall")).ToArray();
+            names = manager.FindAll<Bitmap>(new ResourceLocator("images", "ents"), true).ToArray();
+
+            var bmp = manager.Get<Bitmap>("images", "ents", "human");
 
             Assert.AreEqual(16, bmp.Width);
             Assert.AreEqual(40, bmp.Height);
@@ -37,20 +41,24 @@ namespace UnitTests
         public void Complex()
         {
             var path = Path.Combine(_sTestDataDir, "complex");
-            using (var archive = Archive.FromDirectory(path).Mount()) {
-                TestComplexArchive("Loose");
+
+            var manager = new ArchiveManager();
+            DefaultResourceTypes.Register(manager);
+
+            using (var archive = manager.FromDirectory(path).Mount()) {
+                TestComplexArchive(manager, "Loose");
                 archive.Save("../../TestData/complex.dat");
             }
             
             path = Path.Combine(_sTestDataDir, "complex.dat");
-            using (var archive = Archive.FromFile(path).Mount()) {
-                TestComplexArchive("Packed 1st gen");
+            using (var archive = manager.FromFile(path).Mount()) {
+                TestComplexArchive(manager, "Packed 1st gen");
                 archive.Save("../../TestData/complex2.dat");
             }
             
             path = Path.Combine(_sTestDataDir, "complex2.dat");
-            using (var archive = Archive.FromFile(path).Mount()) {
-                TestComplexArchive("Packed 2nd gen");
+            using (var archive = manager.FromFile(path).Mount()) {
+                TestComplexArchive(manager, "Packed 2nd gen");
             }
         }
     }

@@ -11,8 +11,8 @@ namespace ResourceLibrary
         private String _directory;
         private ResourceLocator[] _ignore;
 
-        internal LooseArchive(String directory, bool root, params ResourceLocator[] ignore)
-            : base(root)
+        internal LooseArchive(ArchiveManager manager, String directory, bool root, params ResourceLocator[] ignore)
+            : base(manager, root)
         {
             _directory = Path.GetFullPath(directory);
             _ignore = ignore;
@@ -68,7 +68,7 @@ namespace ResourceLibrary
                 } catch { break; }
             }
             if (!Directory.Exists(path)) return null;
-            return new LooseArchive(path, false, GetInnerIgnored(name));
+            return new LooseArchive(Manager, path, false, GetInnerIgnored(name));
         }
 
         internal override IEnumerable<KeyValuePair<String, ResourceType>> GetResources()
@@ -76,7 +76,7 @@ namespace ResourceLibrary
             foreach (var file in Directory.GetFiles(_directory)) {
                 var extension = Path.GetExtension(file);
                 
-                var resType = ResourceTypeFromExtension(extension);
+                var resType = Manager.ResourceTypeFromExtension(extension);
                 if (resType == null) continue;
                 
                 var name = Path.GetFileNameWithoutExtension(file);
@@ -109,7 +109,7 @@ namespace ResourceLibrary
 
                         if (_ignore.Any(x => x.Length == 1 && x.First() == name)) continue;
 
-                        var inner = new LooseArchive(path, false, GetInnerIgnored(name));
+                        var inner = new LooseArchive(Manager, path, false, GetInnerIgnored(name));
                         yield return new KeyValuePair<String, Archive>(name, inner);
                     }
                 }
@@ -120,7 +120,7 @@ namespace ResourceLibrary
 
                 if (_ignore.Any(x => x.Length == 1 && x.First() == name)) continue;
 
-                var inner = new LooseArchive(dir, false, GetInnerIgnored(name));
+                var inner = new LooseArchive(Manager, dir, false, GetInnerIgnored(name));
                 yield return new KeyValuePair<String, Archive>(name, inner);
             }
         }

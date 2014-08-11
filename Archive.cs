@@ -13,160 +13,71 @@ namespace ResourceLibrary
         internal const int Version = 0x00000000;
         
         internal static readonly String MagicWord = "RSAR";
+        
+        public bool IsRoot { get; private set; }
 
-        private static Stack<ResourceType[]> _typeStack;
+        public bool IsMounted { get { return Manager.Mounted.Contains(this); } }
 
-        private static Dictionary<Type, ResourceType> _resTypes;
-        private static List<Archive> _mounted;
+        public ArchiveManager Manager { get; private set; }
 
-        static Archive()
+        protected Archive(ArchiveManager manager, bool root)
         {
-            _typeStack = new Stack<ResourceType[]>();
-
-            _resTypes = new Dictionary<Type, ResourceType>();
-            _mounted = new List<Archive>();
-
-            RegisterAll(Assembly.GetExecutingAssembly());
+            Manager = manager;
+            IsRoot = root;
         }
 
-        public static void PushRegisteredTypes()
-        {
-            _typeStack.Push(_resTypes.Values.ToArray());
-        }
-
-        public static void PopRegisteredTypes()
-        {
-            _resTypes.Clear();
-
-            if (_typeStack.Count > 0) {
-                foreach (var resType in _typeStack.Pop()) {
-                    _resTypes.Add(resType.Type, resType);
-                }
-            }
-        }
-
-        public static bool IsRegistered<T>()
-        {
-            var type = typeof(T);
-            return _resTypes.ContainsKey(type);
-        }
-
-        public static void Register<T>(ResourceFormat format, SaveResourceDelegate<T> saveDelegate,
-            LoadResourceDelegate<T> loadDelegate, params String[] extensions)
-        {
-            var resType = new ResourceType<T>(format, saveDelegate, loadDelegate, extensions);
-            _resTypes.Add(resType.Type, resType);
-        }
-
-        public static void RegisterAll(Assembly assembly)
-        {
-            var methods =
-                from type in assembly.GetTypes()
-                from method in type.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
-                where method.GetCustomAttributes(typeof(ResourceTypeRegistrationAttribute), false).Count() > 0
-                    && !method.ContainsGenericParameters && method.GetParameters().Length == 0
-                select method;
-
-            foreach (var method in methods) {
-                method.Invoke(null, new Object[0]);
-            }
-        }
-
-        internal static ResourceType ResourceTypeFromExtension(String extension)
-        {
-            return _resTypes.Values.FirstOrDefault(x => x.Extensions.Contains(extension));
-        }
-
-        internal static ResourceType ResourceTypeFromType(Type type)
-        {
-            return _resTypes.ContainsKey(type) ? _resTypes[type] : null;
-        }
-
-        internal static ResourceType ResourceTypeFromTypeName(String name)
-        {
-            return _resTypes.Values.FirstOrDefault(x => x.Type.FullName == name || x.Type.Name == name);
-        }
-
-        public static Archive FromFile(String path)
-        {
-            return FromStream(File.OpenRead(path));
-        }
-
-        public static Archive FromStream(Stream stream)
-        {
-            return new PackedArchive(stream);
-        }
-
-        public static Archive FromDirectory(String directory, params ResourceLocator[] ignore)
-        {
-            return new LooseArchive(directory, true, ignore);
-        }
-
-        public static T Get<T>(params String[] locator)
+        public T Get<T>(params String[] locator)
         {
             return Get<T>(locator.AsEnumerable());
         }
 
-        public static T Get<T>(IEnumerable<String> locator)
+        public T Get<T>(IEnumerable<String> locator)
         {
-            var resType = ResourceTypeFromType(typeof(T));
+            var resType = Manager.ResourceTypeFromType(typeof(T));
             if (resType == null) {
                 throw new FileNotFoundException(String.Join("/", locator.ToArray()));
             }
 
-            for (int i = _mounted.Count - 1; i >= 0; --i) {
-                var archive = _mounted[i];
-                var resource = archive.Get(resType, locator);
-                if (resource != null) {
-                    return (T) resource;
-                }
+            var resource = Get(resType, locator);
+            if (resource != null) {
+                return (T) resource;
             }
 
             throw new FileNotFoundException(String.Join("/", locator.ToArray()));
         }
 
-        public static IEnumerable<ResourceLocator> FindAll(bool recursive = false)
+        public IEnumerable<ResourceLocator> FindAll(bool recursive = false)
         {
             return FindAll(ResourceLocator.None, recursive);
         }
 
-        public static IEnumerable<ResourceLocator> FindAll<T>(bool recursive = false)
+        public IEnumerable<ResourceLocator> FindAll<T>(bool recursive = false)
         {
             return FindAll<T>(ResourceLocator.None, recursive);
         }
 
-        public static IEnumerable<ResourceLocator> FindAll(ResourceLocator locator, bool recursive = false)
+        public IEnumerable<ResourceLocator> FindAll(ResourceLocator locator, bool recursive = false)
         {
-            return _resTypes.Values
-                .SelectMany(resType => _mounted
-                    .SelectMany(x => x
-                        .FindAll(resType, locator, recursive))
-                    .Distinct()
-                    .Select(x => x.Prepend(locator)))
+            return Manager.ResourceTypes
+                .SelectMany(resType => FindAll(resType, locator, recursive))
+                .Select(x => x.Prepend(locator))
                 .OrderBy(x => x.ToString());
         }
 
-        public static IEnumerable<ResourceLocator> FindAll<T>(ResourceLocator locator, bool recursive = false)
+        public IEnumerable<ResourceLocator> FindAll<T>(ResourceLocator locator, bool recursive = false)
         {
             if (typeof(T) == typeof(Archive)) {
-                return _mounted.SelectMany(x => x.FindAllDirectories(locator)).Distinct();
+                return FindAllDirectories(locator).Distinct();
             }
 
-            var resType = ResourceTypeFromType(typeof(T));
+            var resType = Manager.ResourceTypeFromType(typeof(T));
             if (resType == null) {
                 throw new FileNotFoundException(String.Join("/", locator));
             }
-        
-            return _mounted.SelectMany(x => x.FindAll(resType, locator, recursive))
-                .Distinct().Select(x => x.Prepend(locator)).OrderBy(x => x.ToString());
-        }
 
-        public bool IsRoot { get; private set; }
-        public bool IsMounted { get { return _mounted.Contains(this); } }
-
-        protected Archive(bool root)
-        {
-            IsRoot = root;
+            return FindAll(resType, locator, recursive)
+                .Select(x => x.Prepend(locator))
+                .OrderBy(x => x.ToString());
         }
 
         internal Object Get(ResourceType resType, params String[] locator)
@@ -221,13 +132,13 @@ namespace ResourceLibrary
 
         public Archive Mount()
         {
-            _mounted.Add(this);
+            Manager.Mount(this);
             return this;
         }
 
         public Archive Unmount()
         {
-            _mounted.Remove(this);
+            Manager.Unmount(this);
             return this;
         }
         
@@ -254,13 +165,13 @@ namespace ResourceLibrary
 
         private void Save(BinaryWriter writer)
         {
-            var types = _resTypes.Keys.ToList();
+            var types = Manager.RegisteredTypes.ToArray();
 
             if (IsRoot) {
                 writer.Write(MagicWord.ToCharArray());
                 writer.Write(Version);
                 
-                writer.Write(types.Count);
+                writer.Write(types.Length);
                 foreach (var type in types) {
                     writer.Write(type.FullName);
                 }
@@ -287,7 +198,7 @@ namespace ResourceLibrary
             i = 0;
             foreach (var kv in resources) {
                 writer.Write(kv.Key);
-                writer.Write(types.IndexOf(kv.Value.Type));
+                writer.Write(Array.IndexOf(types, kv.Value.Type));
                 resourcePositions[i++] = writer.BaseStream.Position;
                 writer.Write((long) 0);
                 writer.Write((long) 0);

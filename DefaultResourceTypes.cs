@@ -5,14 +5,14 @@ using System.Xml.Linq;
 
 namespace ResourceLibrary
 {
-    internal static class DefaultResourceTypes
+    public static class DefaultResourceTypes
     {
-        public static void RegisterResourceTypes()
+        public static void Register(ArchiveManager manager)
         {
-            Archive.Register<Bitmap>(ResourceFormat.Compressed, SaveBitmap, LoadBitmap,
+            manager.Register<Bitmap>(ResourceFormat.Compressed, SaveBitmap, LoadBitmap,
                 ".png", ".gif", ".jpg", ".jpeg", ".ico");
 
-            Archive.Register<XDocument>(ResourceFormat.Compressed, SaveXDocument, LoadXDocument,
+            manager.Register<XDocument>(ResourceFormat.Compressed, SaveXDocument, LoadXDocument,
                 ".xml");
         }
 
