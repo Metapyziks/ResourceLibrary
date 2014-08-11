@@ -24,31 +24,9 @@ namespace UnitTests
 
         private void TestComplexArchive(String description)
         {
-            var path = Path.Combine(_sTestDataDir, "complex/images/tiles/floor");
-            var actual = Directory.GetDirectories(path)
-                .Select(x => Path.GetFileName(x)).OrderBy(x => x)
-                .ToArray();
-
-            var names = Archive.GetAllNames<Archive>("images", "tiles", "floor").ToArray();
-
-            Assert.AreEqual(actual.Length, names.Length);
-            Assert.IsTrue(actual.Zip(names, (x, y) => x == y).All(x => x));
-
-            ////
+            var names = Archive.FindAll<Archive>(new ResourceLocator("images", "tiles", "wall")).ToArray();
+            names = Archive.FindAll<Bitmap>(new ResourceLocator("images", "ents"), true).ToArray();
             
-            path = Path.Combine(_sTestDataDir, "complex/images/ents/human");
-            actual = Directory.GetFiles(path)
-                .Where(x => Path.GetExtension(x) == ".png")
-                .Select(x => Path.GetFileNameWithoutExtension(x)).OrderBy(x => x)
-                .ToArray();
-
-            names = Archive.GetAllNames<Bitmap>("images", "ents", "human").ToArray();
-            
-            Assert.AreEqual(actual.Length, names.Length);
-            Assert.IsTrue(actual.Zip(names, (x, y) => x == y).All(x => x));
-
-            ////
-
             var bmp = Archive.Get<Bitmap>("images", "ents", "human");
 
             Assert.AreEqual(16, bmp.Width);

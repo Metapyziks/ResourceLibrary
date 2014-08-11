@@ -18,13 +18,17 @@ namespace ResourceLibrary
 
         internal override Object Get(ResourceType resType, IEnumerable<String> locator)
         {
+<<<<<<< HEAD
+            var joined = Path.Combine(_directory, Tools.CombinePath(locator));
+=======
             if (locator.Count() > 1) {
                 var inner = GetInnerArchive(locator.First());
                 if (inner == null) return null;
                 return inner.Get(resType, locator.Skip(1));
             }
 
-            var joined = Path.Combine(_directory, Tools.CombinePath(locator));
+            var joined = Path.Combine(_directory, Path.Combine(locator.ToArray()));
+>>>>>>> 1f06f731fb3b8841b20ad32ba92f03e6dbd3437f
             var path = resType.Extensions.Select(x => String.Format("{0}{1}", joined, x))
                 .FirstOrDefault(x => File.Exists(x));
 

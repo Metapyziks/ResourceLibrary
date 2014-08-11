@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -9,7 +10,7 @@ namespace ResourceLibrary
 {
     public abstract class Archive : IDisposable
     {
-        internal const int Alignment = 0x00000001;
+        internal const int Alignment = 0x00000100;
         internal const int Version = 0x00000000;
         
         internal static readonly String MagicWord = "RSAR";
@@ -25,28 +26,16 @@ namespace ResourceLibrary
             RegisterAll(Assembly.GetExecutingAssembly());
         }
 
-        /// <summary>
-        /// Checks to see if a given type is already registered as a resource type.
-        /// </summary>
-        /// <typeparam name="T">The type to check</typeparam>
-        /// <returns>True if the type has already been registered</returns>
         public static bool IsRegistered<T>()
         {
             var type = typeof(T);
             return _resTypes.ContainsKey(type);
         }
 
-        /// <summary>
-        /// Register a type to be recognised as a resource type, and provide the methods
-        /// to save and load resources of that type.
-        /// </summary>
-        /// <typeparam name="T">The type to be registered as a resource type</typeparam>
-        /// <param name="saveDelegate">The method to be used when saving resources of the given type</param>
-        /// <param name="loadDelegate">The method to be used when loading resources of the given type</param>
-        public static void Register<T>(SaveResourceDelegate<T> saveDelegate,
+        public static void Register<T>(ResourceFormat format, SaveResourceDelegate<T> saveDelegate,
             LoadResourceDelegate<T> loadDelegate, params String[] extensions)
         {
-            var resType = new ResourceType<T>(saveDelegate, loadDelegate, extensions);
+            var resType = new ResourceType<T>(format, saveDelegate, loadDelegate, extensions);
             _resTypes.Add(resType.Type, resType);
         }
 
@@ -96,13 +85,19 @@ namespace ResourceLibrary
 
         public static T Get<T>(params String[] locator)
         {
+            return Get<T>(locator.AsEnumerable());
+        }
+
+        public static T Get<T>(IEnumerable<String> locator)
+        {
             var resType = ResourceTypeFromType(typeof(T));
             if (resType == null) {
                 throw new FileNotFoundException(String.Join("/", locator));
             }
 
-            foreach (var archive in _mounted) {
-                var resource = archive.Get(resType, locator.AsEnumerable());
+            for (int i = _mounted.Count - 1; i >= 0; --i) {
+                var archive = _mounted[i];
+                var resource = archive.Get(resType, locator);
                 if (resource != null) {
                     return (T) resource;
                 }
@@ -111,10 +106,15 @@ namespace ResourceLibrary
             throw new FileNotFoundException(String.Join("/", locator));
         }
 
-        public static IEnumerable<String> GetAllNames<T>(params String[] locator)
+        public static IEnumerable<ResourceLocator> FindAll<T>(bool recursive = false)
+        {
+            return FindAll<T>(ResourceLocator.None, recursive);
+        }
+
+        public static IEnumerable<ResourceLocator> FindAll<T>(ResourceLocator locator, bool recursive = false)
         {
             if (typeof(T) == typeof(Archive)) {
-                return _mounted.SelectMany(x => x.GetAllDirectories(locator)).Distinct();
+                return _mounted.SelectMany(x => x.FindAllDirectories(locator)).Distinct();
             }
 
             var resType = ResourceTypeFromType(typeof(T));
@@ -122,11 +122,11 @@ namespace ResourceLibrary
                 throw new FileNotFoundException(String.Join("/", locator));
             }
         
-            return _mounted.SelectMany(x => x.GetAllNames(resType, locator)).Distinct();
+            return _mounted.SelectMany(x => x.FindAll(resType, locator, recursive))
+                .Distinct().Select(x => x.Prepend(locator));
         }
 
         public bool IsRoot { get; private set; }
-
         public bool IsMounted { get { return _mounted.Contains(this); } }
 
         protected Archive(bool root)
@@ -140,36 +140,45 @@ namespace ResourceLibrary
         }
 
         internal abstract Object Get(ResourceType resType, IEnumerable<String> locator);
+        internal abstract bool IsModified(ResourceType resType, IEnumerable<String> locator, DateTime lastAccess);
         internal abstract Archive GetInnerArchive(String name);
 
-        internal IEnumerable<String> GetAllNames(ResourceType resType, IEnumerable<String> locator)
+        internal IEnumerable<ResourceLocator> FindAll(ResourceType resType, ResourceLocator locator, bool recursive = false)
         {
             if (locator.Count() == 0) {
-                return GetResources()
+                var rootLevel = GetResources()
                     .Where(x => x.Value == resType)
-                    .Select(x => x.Key);
+                    .Select(x => (ResourceLocator) x.Key);
+
+                if (!recursive) {
+                    return rootLevel;
+                } else {
+                    return rootLevel.Union(GetInnerArchives()
+                        .SelectMany(x => x.Value.FindAll(resType, locator, recursive)
+                            .Select(y => y.Prepend(x.Key))).Distinct());
+                }
             }
 
             var name = locator.First();
             var inner = GetInnerArchive(name);
 
-            if (inner == null) return Enumerable.Empty<String>();
+            if (inner == null) return Enumerable.Empty<ResourceLocator>();
 
-            return inner.GetAllNames(resType, locator.Skip(1));
+            return inner.FindAll(resType, locator.Skip(1).ToArray(), recursive);
         }
 
-        internal IEnumerable<String> GetAllDirectories(IEnumerable<String> locator)
+        internal IEnumerable<ResourceLocator> FindAllDirectories(ResourceLocator locator)
         {
             if (locator.Count() == 0) {
-                return GetInnerArchives().Select(x => x.Key);
+                return GetInnerArchives().Select(x => (ResourceLocator) x.Key);
             }
 
             var name = locator.First();
             var inner = GetInnerArchive(name);
 
-            if (inner == null) return Enumerable.Empty<String>();
+            if (inner == null) return Enumerable.Empty<ResourceLocator>();
 
-            return inner.GetAllDirectories(locator.Skip(1));
+            return inner.FindAllDirectories(locator.Skip(1).ToArray()).Select(x => x.Prepend(name));
         }
 
         internal abstract IEnumerable<KeyValuePair<String, ResourceType>> GetResources();
@@ -270,7 +279,19 @@ namespace ResourceLibrary
 
                 long start = writer.BaseStream.Position;
                 var resource = Get(kv.Value, kv.Key);
-                kv.Value.Save(writer.BaseStream, resource);
+
+                if (kv.Value.Format.HasFlag(ResourceFormat.Compressed)) {
+                    using (var memStream = new MemoryStream()) {
+                        kv.Value.Save(memStream, resource);
+                        memStream.Seek(0, SeekOrigin.Begin);
+                        using (var zipStream = new GZipStream(writer.BaseStream, CompressionMode.Compress, true)) {
+                            memStream.CopyTo(zipStream);
+                        }
+                    }
+                } else {
+                    kv.Value.Save(writer.BaseStream, resource);
+                }
+
                 long end = writer.BaseStream.Position;
 
                 writer.BaseStream.Seek(resourcePositions[i++], SeekOrigin.Begin);
